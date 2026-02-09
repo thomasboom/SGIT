@@ -33,7 +33,7 @@ When using `--push`, SGIT now runs `git push` without hard-coding `origin`, so y
 
 `sgit status` accepts `--short` to show the compact `git status -sb` view, and `sgit push` respects the default `git push` behavior (add `remote`/`branch` only if you explicitly pass them).
 
-Set `--explain` on any `sgit` invocation to print a friendly “noob explanation” of each command and its common options instead of running the command you normally would.
+Set `--explain` on any `sgit` invocation (even without a subcommand) to print a friendly “noob explanation” of each command and its common options instead of running the command you normally would.
 
 ## Local installation
 

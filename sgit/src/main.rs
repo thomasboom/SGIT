@@ -1,6 +1,6 @@
-use std::process::{Command as StdCommand, Stdio};
+use std::process::Command as StdCommand;
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
 
 fn main() {
@@ -18,7 +18,12 @@ fn run() -> Result<()> {
         return Ok(());
     }
 
-    match cli.command {
+    let command = match cli.command {
+        Some(command) => command,
+        None => bail!("'sgit' requires a subcommand; use --help to see the available list"),
+    };
+
+    match command {
         SgitCommand::Init => run_git(&["init"])?,
         SgitCommand::Stage { targets } => stage_targets(&targets)?,
         SgitCommand::Unstage { targets } => restore_stage(&targets)?,
@@ -126,6 +131,7 @@ fn run() -> Result<()> {
 #[command(
     name = "sgit",
     about = "Blazing fast wrapper for Git with simplified workflows",
+    version,
     propagate_version = true
 )]
 struct Cli {
@@ -134,7 +140,7 @@ struct Cli {
     explain: bool,
 
     #[command(subcommand)]
-    command: SgitCommand,
+    command: Option<SgitCommand>,
 }
 
 #[derive(Subcommand)]
@@ -240,24 +246,6 @@ fn restore_stage(targets: &[String]) -> Result<()> {
     args.extend(target_args);
 
     run_git(&args)
-}
-
-fn current_branch() -> Result<String> {
-    let output = StdCommand::new("git")
-        .args(["rev-parse", "--abbrev-ref", "HEAD"])
-        .stderr(Stdio::inherit())
-        .output()
-        .context("failed to query current branch")?;
-
-    if !output.status.success() {
-        Err(anyhow!("unable to determine current branch"))
-    } else {
-        let branch = String::from_utf8(output.stdout)
-            .context("branch name is not valid UTF-8")?
-            .trim()
-            .to_string();
-        Ok(branch)
-    }
 }
 
 fn run_git(args: &[&str]) -> Result<()> {
