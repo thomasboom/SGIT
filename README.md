@@ -36,8 +36,8 @@ When using `--push`, SGIT will default to `origin` and your current branch name.
 Use the provided scripts to install or remove the binary:
 
 ```
-./install.sh       # builds SGIT and copies it to /usr/local/bin (or $SGIT_INSTALL_DIR)
-./uninstall.sh     # deletes the installed binary
+./install.sh       # builds SGIT and copies it to $HOME/.local/bin (or $SGIT_INSTALL_DIR)
+./uninstall.sh     # deletes the installed binary from the same location
 ```
 
 Set the `SGIT_INSTALL_DIR` environment variable before running `install.sh`/`uninstall.sh` if you prefer installing somewhere else in your PATH. Re-running `install.sh` rebuilds and updates the binary.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-INSTALL_DIR="${SGIT_INSTALL_DIR:-/usr/local/bin}"
+INSTALL_DIR="${SGIT_INSTALL_DIR:-${HOME}/.local/bin}"
 TARGET_PATH="$INSTALL_DIR/sgit"
 
 if [[ ! -e "$TARGET_PATH" ]]; then
