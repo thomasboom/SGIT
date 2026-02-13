@@ -55,7 +55,14 @@ fn run() -> Result<()> {
                 run_git(&["diff"])?;
             }
         }
-        SgitCommand::Branch => run_branch_interactive()?,
+        SgitCommand::Branch { create } => {
+            if let Some(branch_name) = create {
+                run_git(&["branch", &branch_name])?;
+                run_git(&["checkout", &branch_name])?;
+            } else {
+                run_branch_interactive()?;
+            }
+        }
         SgitCommand::Push { remote, branch } => {
             if remote.is_none() && branch.is_some() {
                 bail!("cannot specify --branch without --remote");
@@ -280,8 +287,12 @@ enum SgitCommand {
         #[arg(long)]
         staged: bool,
     },
-    /// List branches
-    Branch,
+    /// List and checkout branches (interactive)
+    Branch {
+        /// Create a new branch
+        #[arg(short, long)]
+        create: Option<String>,
+    },
     /// Push current branch
     Push {
         /// Remote name (defaults to origin)
@@ -634,13 +645,9 @@ fn get_current_branch() -> Result<String> {
 
 fn run_branch_interactive() -> Result<()> {
     let branches = get_branches()?;
-    if branches.is_empty() {
-        println!("No branches found.");
-        return Ok(());
-    }
-
     let current = get_current_branch().unwrap_or_default();
-    let display_branches: Vec<String> = branches
+
+    let mut display_branches: Vec<String> = branches
         .iter()
         .map(|b| {
             if b == &current {
@@ -650,6 +657,7 @@ fn run_branch_interactive() -> Result<()> {
             }
         })
         .collect();
+    display_branches.push("Create new branch...".to_string());
 
     let selection = Select::new()
         .with_prompt("Select a branch to checkout")
@@ -657,11 +665,23 @@ fn run_branch_interactive() -> Result<()> {
         .default(0)
         .interact()?;
 
-    let selected_branch = &branches[selection];
-    if selected_branch == &current {
-        println!("Already on branch '{}'.", selected_branch);
+    if selection == branches.len() {
+        let branch_name: String = Input::new().with_prompt("New branch name").interact()?;
+
+        if branch_name.is_empty() {
+            bail!("branch name cannot be empty");
+        }
+
+        let normalized_name = branch_name.trim().replace(' ', "-");
+        run_git(&["branch", &normalized_name])?;
+        run_git(&["checkout", &normalized_name])?;
     } else {
-        run_git(&["checkout", selected_branch])?;
+        let selected_branch = &branches[selection];
+        if selected_branch == &current {
+            println!("Already on branch '{}'.", selected_branch);
+        } else {
+            run_git(&["checkout", selected_branch])?;
+        }
     }
 
     Ok(())
@@ -676,7 +696,7 @@ fn print_explanations() {
     println!("  status  – show what is staged vs unstaged (`--short` uses `git status -sb`).");
     println!("  log     – view history (`--short` shows compact entries).");
     println!("  diff    – compare working changes (`--staged` shows what will be committed).");
-    println!("  branch  – list and checkout branches (interactive selection).");
+    println!("  branch  – list and checkout branches (interactive); use -c <name> to create a new branch.");
     println!(
         "  push    – send commits to your remote (uses Git's defaults unless you pass `--remote`/`--branch`)."
     );
