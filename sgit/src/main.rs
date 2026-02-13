@@ -1,7 +1,8 @@
 use std::process::Command as StdCommand;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
+use dialoguer::{Input, Select};
 
 fn main() {
     if let Err(err) = run() {
@@ -88,17 +89,47 @@ fn run() -> Result<()> {
             amend,
             no_verify,
         } => {
+            let (all, staged, unstaged, commit_msg) =
+                if message.is_none() && !all && !staged && !unstaged {
+                    let scope = Select::new()
+                        .with_prompt("What would you like to commit?")
+                        .items(&[
+                            "Staged changes",
+                            "Unstaged changes",
+                            "All changes",
+                            "Custom",
+                        ])
+                        .default(0)
+                        .interact()?;
+
+                    let (all, staged, unstaged) = match scope {
+                        0 => (false, true, false),
+                        1 => (false, false, true),
+                        2 => (true, false, false),
+                        _ => (false, false, false),
+                    };
+
+                    let msg: String = Input::new().with_prompt("Commit message").interact()?;
+                    (all, staged, unstaged, msg)
+                } else {
+                    let msg = message.unwrap_or_default();
+                    (all, staged, unstaged, msg)
+                };
+
+            if commit_msg.is_empty() {
+                bail!("commit message cannot be empty");
+            }
+
             let mut should_stage_untracked = false;
             if all {
                 run_git(&["add", "-A"])?;
                 should_stage_untracked = true;
             } else if unstaged {
                 run_git(&["add", "-u"])?;
+            } else if !staged && !unstaged && !all {
             }
 
-            if !all && !staged && !unstaged {
-                // default to staged only when no scope provided
-            } else if staged && (all || unstaged) {
+            if staged && (all || unstaged) {
                 bail!("cannot combine --staged with --all or --unstaged");
             }
 
@@ -110,7 +141,7 @@ fn run() -> Result<()> {
                 commit_args.push("--no-verify");
             }
             commit_args.push("-m");
-            commit_args.push(message.as_str());
+            commit_args.push(commit_msg.as_str());
 
             run_git(&commit_args)?;
 
@@ -167,7 +198,7 @@ enum SgitCommand {
     Commit {
         /// Commit message
         #[arg(short, long, value_name = "MSG")]
-        message: String,
+        message: Option<String>,
         /// Stage tracked + untracked before committing
         #[arg(long)]
         all: bool,

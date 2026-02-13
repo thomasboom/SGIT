@@ -1,4 +1,5 @@
 # SGIT
+
 SGIT (Simple Git) is a lightning-fast Rust wrapper around the Git CLI that exposes streamlined workflows for initializing repositories, staging files, creating commits, and pushing in a few simple commands.
 
 ## Building
