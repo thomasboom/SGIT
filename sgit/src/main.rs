@@ -55,7 +55,7 @@ fn run() -> Result<()> {
                 run_git(&["diff"])?;
             }
         }
-        SgitCommand::Branch => run_git(&["branch"])?,
+        SgitCommand::Branch => run_branch_interactive()?,
         SgitCommand::Push { remote, branch } => {
             if remote.is_none() && branch.is_some() {
                 bail!("cannot specify --branch without --remote");
@@ -606,6 +606,67 @@ fn run_git_quiet(args: &[&str]) -> Result<()> {
     }
 }
 
+fn get_branches() -> Result<Vec<String>> {
+    let output = StdCommand::new("git")
+        .args(["branch", "--format=%(refname:short)"])
+        .output()
+        .context("running git branch")?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let branches: Vec<String> = stdout
+        .lines()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    Ok(branches)
+}
+
+fn get_current_branch() -> Result<String> {
+    let output = StdCommand::new("git")
+        .args(["branch", "--show-current"])
+        .output()
+        .context("getting current branch")?;
+
+    let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Ok(branch)
+}
+
+fn run_branch_interactive() -> Result<()> {
+    let branches = get_branches()?;
+    if branches.is_empty() {
+        println!("No branches found.");
+        return Ok(());
+    }
+
+    let current = get_current_branch().unwrap_or_default();
+    let display_branches: Vec<String> = branches
+        .iter()
+        .map(|b| {
+            if b == &current {
+                format!("{} (current)", b)
+            } else {
+                b.clone()
+            }
+        })
+        .collect();
+
+    let selection = Select::new()
+        .with_prompt("Select a branch to checkout")
+        .items(&display_branches)
+        .default(0)
+        .interact()?;
+
+    let selected_branch = &branches[selection];
+    if selected_branch == &current {
+        println!("Already on branch '{}'.", selected_branch);
+    } else {
+        run_git(&["checkout", selected_branch])?;
+    }
+
+    Ok(())
+}
+
 fn print_explanations() {
     println!("SGIT simplifies Git for beginners by wrapping each major workflow:");
     println!();
@@ -615,7 +676,7 @@ fn print_explanations() {
     println!("  status  – show what is staged vs unstaged (`--short` uses `git status -sb`).");
     println!("  log     – view history (`--short` shows compact entries).");
     println!("  diff    – compare working changes (`--staged` shows what will be committed).");
-    println!("  branch  – list local branches.");
+    println!("  branch  – list and checkout branches (interactive selection).");
     println!(
         "  push    – send commits to your remote (uses Git's defaults unless you pass `--remote`/`--branch`)."
     );
