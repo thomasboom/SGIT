@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 INSTALL_DIR="${SGIT_INSTALL_DIR:-${HOME}/.local/bin}"
 TARGET_PATH="$INSTALL_DIR/sgit"
