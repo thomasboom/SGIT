@@ -84,25 +84,4 @@ jobs:
           tag_name: ${{ github.event.release.tag_name }}
           files: ${{ matrix.artifact }}.zip
 
-  update-install-script:
-    name: Update install script
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Get version
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
-      - name: Update install.sh version
-        run: |
-          sed -i 's/^VERSION=.*/VERSION="${{ steps.version.outputs.VERSION }}"/' website/install.sh || true
-
-      - name: Commit updated install script
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add website/install.sh || true
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update install.sh for ${{ steps.version.outputs.VERSION }}"
-          git push
